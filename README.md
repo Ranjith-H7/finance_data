@@ -1,5 +1,22 @@
 # Finance Data Management System
 
+## User Roles Mapping
+
+### Admin
+
+Email: ranjith07509@gmail.com  
+Password: ranjith#123
+
+### Analyst
+
+Email: 350ranjith@gmail.com  
+Password: ranjith#350
+
+### Viewer
+
+Email: ranjith.ram390@gmail.com  
+Password: ranjith#390
+
 ## 📌 Project Overview
 
 This project is a **Finance Record Management System** built based on real-world company workflow.
@@ -388,3 +405,16 @@ Users log in, perform actions based on roles, and get **accurate financial insig
 ---
 
 ✅ Project is simple, practical, and designed based on real company structure.
+
+---
+
+## 📸 Screenshots
+
+![Application Logo](img.png)
+
+![Screenshot 1](Screenshot%202026-04-05%20at%2020.40.09.png)
+![Screenshot 2](Screenshot%202026-04-05%20at%2020.40.21.png)
+![Screenshot 3](Screenshot%202026-04-05%20at%2020.40.30.png)
+![Screenshot 4](Screenshot%202026-04-05%20at%2020.40.42.png)
+![Screenshot 5](Screenshot%202026-04-05%20at%2020.40.54.png)
+![Screenshot 6](Screenshot%202026-04-05%20at%2020.41.00.png)
