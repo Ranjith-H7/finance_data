@@ -72,15 +72,4 @@ export const ensureDefaultUsers = async () => {
     });
   }
 
-  if (process.env.NODE_ENV !== 'production') {
-    const [adminSeed, analystSeed] = defaultSeedUsers;
-
-    if (!adminSeed || !analystSeed) {
-      return;
-    }
-
-    console.log('Seeded default users for local login:');
-    console.log(`Admin   -> ${adminSeed.email} / ${adminSeed.password}`);
-    console.log(`Analyst -> ${analystSeed.email} / ${analystSeed.password}`);
-  }
 };

@@ -4,6 +4,7 @@ import FinanceRecord from '../models/financeRecord.js';
 import User from '../models/users.js';
 import AnalystPermission from '../models/analystPermission.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { logAuditEvent } from '../utils/auditLogger.js';
 
 const getRequestedUserId = (value: unknown): string | null => {
   if (!value) {
@@ -247,7 +248,7 @@ const buildUserBreakdown = async (matchStage: Record<string, unknown>) => {
   ]);
 };
 
-const buildAnalyticsPayload = async (req: AuthRequest) => {
+export const getFinanceAnalyticsPayload = async (req: AuthRequest) => {
   const requestedUserId = getRequestedUserId(req.query.userId);
   const accessMatchStage = await buildAccessibleMatchStage(req, requestedUserId ?? undefined);
   const queryFilters = buildFinanceFilters(req.query, requestedUserId ?? undefined);
@@ -266,6 +267,9 @@ const buildAnalyticsPayload = async (req: AuthRequest) => {
         totalRecords: 0,
         netBalance: 0,
         totalUsers: 0,
+        averageAmount: 0,
+        minAmount: 0,
+        maxAmount: 0,
       },
       byType: [],
       byCategory: [],
@@ -273,6 +277,7 @@ const buildAnalyticsPayload = async (req: AuthRequest) => {
       recentActivity: [],
       topSpenders: [],
       lowestSpenders: [],
+      userBreakdown: [],
       permissionRequired: true,
       accessScope: 'none' as const,
     };
@@ -450,6 +455,14 @@ export const createFinanceRecord = async (req: AuthRequest, res: Response) => {
       merchant,
     });
 
+    await logAuditEvent({
+      actorId: req.user.id,
+      action: 'finance.create',
+      targetType: 'finance_record',
+      targetId: String(financeRecord._id),
+      details: { userId: String(owner._id), amount, type, category },
+    });
+
     res.status(201).json(financeRecord);
   } catch (error) {
     res.status(500).json({ message: 'Error creating finance record', error });
@@ -469,6 +482,14 @@ export const getAllFinanceRecords = async (req: AuthRequest, res: Response) => {
     const requestedUserId = getRequestedUserId(req.query.userId);
     const filters = buildFinanceFilters(req.query, req.user.role === 'admin' ? requestedUserId ?? undefined : undefined);
     const accessibleUserIds = await getAccessibleUserIds(req);
+    const page = Math.max(1, Number(req.query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 20)));
+    const skip = (page - 1) * limit;
+    const sortByRaw = String(req.query.sortBy ?? 'createdAt');
+    const sortOrderRaw = String(req.query.sortOrder ?? 'desc').toLowerCase();
+    const allowedSortBy = new Set(['createdAt', 'date', 'amount', 'category', 'type']);
+    const sortBy = allowedSortBy.has(sortByRaw) ? sortByRaw : 'createdAt';
+    const sortOrder = sortOrderRaw === 'asc' ? 1 : -1;
 
     if (req.user.role === 'analyst' && accessibleUserIds.length === 0) {
       return res.status(403).json({
@@ -492,14 +513,35 @@ export const getAllFinanceRecords = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const records = await FinanceRecord.find({
+    const query = {
       ...filters,
       ...(req.user.role === 'admin'
         ? {}
         : requestedUserId
           ? { userId: requestedUserId }
           : { userId: { $in: accessibleUserIds } }),
-    }).sort({ createdAt: -1 });
+    };
+
+    const paginated = req.query.page !== undefined || req.query.limit !== undefined;
+    const [records, total] = await Promise.all([
+      FinanceRecord.find(query)
+        .sort({ [sortBy]: sortOrder })
+        .skip(paginated ? skip : 0)
+        .limit(paginated ? limit : 0),
+      FinanceRecord.countDocuments(query),
+    ]);
+
+    if (paginated) {
+      return res.status(200).json({
+        data: records,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        sortBy,
+        sortOrder: sortOrder === 1 ? 'asc' : 'desc',
+      });
+    }
 
     res.status(200).json(records);
   } catch (error) {
@@ -513,7 +555,7 @@ export const getFinanceAnalytics = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const payload = await buildAnalyticsPayload(req);
+    const payload = await getFinanceAnalyticsPayload(req);
     res.status(200).json(payload);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching finance analytics', error });
@@ -559,6 +601,16 @@ export const updateFinanceRecord = async (req: AuthRequest, res: Response) => {
       runValidators: true,
     });
 
+    if (updatedRecord) {
+      await logAuditEvent({
+        actorId: req.user.id,
+        action: 'finance.update',
+        targetType: 'finance_record',
+        targetId: String(updatedRecord._id),
+        details: updatePayload,
+      });
+    }
+
     res.status(200).json(updatedRecord);
   } catch (error) {
     res.status(500).json({ message: 'Error updating finance record', error });
@@ -583,6 +635,14 @@ export const deleteFinanceRecord = async (req: AuthRequest, res: Response) => {
     }
 
     await FinanceRecord.findByIdAndDelete(id);
+
+    await logAuditEvent({
+      actorId: req.user.id,
+      action: 'finance.delete',
+      targetType: 'finance_record',
+      targetId: String(id),
+      details: { amount: existingRecord.amount, type: existingRecord.type, category: existingRecord.category },
+    });
 
     res.status(200).json({ message: 'Finance record deleted successfully' });
   } catch (error) {

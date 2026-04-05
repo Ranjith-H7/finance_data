@@ -3,6 +3,7 @@ import User from '../models/users.js';
 import AnalystPermission from '../models/analystPermission.js';
 import type { PermissionScope } from '../models/analystPermission.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { logAuditEvent } from '../utils/auditLogger.js';
 
 const normalizeScope = (scope: unknown): PermissionScope | null => {
   if (scope === 'all_users' || scope === 'single_user') {
@@ -64,6 +65,14 @@ export const requestDataAccess = async (req: AuthRequest, res: Response) => {
     };
 
     const accessRequest = await AnalystPermission.create(accessRequestPayload);
+
+    await logAuditEvent({
+      actorId: req.user.id,
+      action: 'permission.request',
+      targetType: 'permission',
+      targetId: String(accessRequest._id),
+      details: { scope, userId: userId || null, status: accessRequest.status },
+    });
 
     res.status(201).json(accessRequest);
   } catch (error) {
@@ -132,6 +141,14 @@ export const reviewDataAccessRequest = async (req: AuthRequest, res: Response) =
       return res.status(404).json({ message: 'Access request not found' });
     }
 
+    await logAuditEvent({
+      actorId: req.user.id,
+      action: 'permission.review',
+      targetType: 'permission',
+      targetId: String(updatedRequest._id),
+      details: { status },
+    });
+
     res.status(200).json(updatedRequest);
   } catch (error) {
     res.status(500).json({ message: 'Error reviewing access request', error });
@@ -154,6 +171,14 @@ export const revokeDataAccess = async (req: AuthRequest, res: Response) => {
     if (!deletedRequest) {
       return res.status(404).json({ message: 'Access request not found' });
     }
+
+    await logAuditEvent({
+      actorId: req.user.id,
+      action: 'permission.revoke',
+      targetType: 'permission',
+      targetId: String(deletedRequest._id),
+      details: { analystId: String(deletedRequest.analystId), scope: deletedRequest.scope },
+    });
 
     res.status(200).json({ message: 'Access request removed successfully' });
   } catch (error) {

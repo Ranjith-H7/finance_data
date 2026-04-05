@@ -141,7 +141,7 @@ export function FinanceList() {
   }, [canManage, userSearch]);
 
   const canEditRecord = useMemo(() => {
-    return (record: FinanceRecordType) => {
+    return (_record: FinanceRecordType) => {
       if (!user) {
         return false;
       }
@@ -150,7 +150,7 @@ export function FinanceList() {
   }, [user]);
 
   const canDeleteRecord = useMemo(() => {
-    return (record: FinanceRecordType) => {
+    return (_record: FinanceRecordType) => {
       if (!user) {
         return false;
       }

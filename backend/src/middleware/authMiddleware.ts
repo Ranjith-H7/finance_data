@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import type { JwtPayload } from 'jsonwebtoken';
 import User from '../models/users.js';
+import { resolveJwtSecret } from '../utils/jwtSecret.js';
 
 export type UserRole = 'viewer' | 'analyst' | 'admin';
 
@@ -24,7 +25,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       return res.status(401).json({ message: 'Token is missing' });
     }
 
-    const decoded = jwt.verify(jwtToken, process.env.JWT_SECRET as string) as unknown as JwtPayload & {
+    const decoded = jwt.verify(jwtToken, resolveJwtSecret()) as unknown as JwtPayload & {
       id: string;
       role: UserRole;
     };

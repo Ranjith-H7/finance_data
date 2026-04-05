@@ -2,11 +2,13 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import User from '../models/users.js';
 import type { Request, Response } from 'express';
+import { resolveJwtSecret } from '../utils/jwtSecret.js';
 
 const createAuthResponse = (user: { _id: unknown; name: string; email: string; role: string; status: string }) => {
+  const jwtSecret = resolveJwtSecret();
   const token = jwt.sign(
     { id: user._id, role: user.role },
-    process.env.JWT_SECRET as string,
+    jwtSecret,
     { expiresIn: '1d' }
   );
 
@@ -49,8 +51,8 @@ export const login = async (req: Request, res: Response) => {
     }
 
     res.status(200).json(createAuthResponse(user));
-  } catch (error) {
-    res.status(500).json({ message: 'Error logging in', error });
+  } catch (_error) {
+    res.status(500).json({ message: 'Error logging in' });
   }
 };
 
@@ -87,7 +89,7 @@ export const register = async (req: Request, res: Response) => {
     const authResponse = createAuthResponse(user);
 
     res.status(201).json(authResponse);
-  } catch (error) {
-    res.status(500).json({ message: 'Error registering user', error });
+  } catch (_error) {
+    res.status(500).json({ message: 'Error registering user' });
   }
 };

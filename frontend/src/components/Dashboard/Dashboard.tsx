@@ -176,7 +176,7 @@ export function Dashboard() {
 
   const isViewer = user?.role === 'viewer';
   const isAnalyst = user?.role === 'analyst';
-  const canSeeUserBreakdown = isViewer || isAnalyst;
+  const canSeeUserBreakdown = isAnalyst;
   const selectedAnalystUser = analystApprovedUsers.find((entry) => entry._id === analystSelectedUserId) ?? null;
 
   return (
@@ -369,68 +369,87 @@ export function Dashboard() {
         </section>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <CategoryBreakdown data={analytics.byCategory} />
-        <MonthlyTrends data={analytics.monthlyTrends} />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl">
-          <h3 className="text-lg font-semibold text-white">Highest spending users</h3>
-          <div className="mt-4 grid gap-3">
-            {analytics.topSpenders.length === 0 ? (
-              <p className="text-sm text-slate-400">No spending data available.</p>
-            ) : analytics.topSpenders.map((item) => (
-              <div key={item.userId} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
-                <div>
-                  <p className="font-medium text-white">{item.name}</p>
-                  <p className="text-slate-400">{item.email}</p>
-                </div>
-                <p className="font-semibold text-rose-300">₹{item.totalExpense.toLocaleString('en-IN')}</p>
-              </div>
-            ))}
+      {isViewer ? (
+        <section className="rounded-3xl border border-sky-300/20 bg-sky-400/5 p-6 shadow-glow backdrop-blur-xl">
+          <div className="mb-5">
+            <h3 className="text-lg font-semibold text-white">Viewer Charts</h3>
+            <p className="text-sm text-slate-300">
+              Monthly and category-wise charts for read-only monitoring.
+            </p>
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <CategoryBreakdown data={analytics.byCategory} />
+            <MonthlyTrends data={analytics.monthlyTrends} />
           </div>
         </section>
-
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl">
-          <h3 className="text-lg font-semibold text-white">Lowest spending users</h3>
-          <div className="mt-4 grid gap-3">
-            {analytics.lowestSpenders.length === 0 ? (
-              <p className="text-sm text-slate-400">No spending data available.</p>
-            ) : analytics.lowestSpenders.map((item) => (
-              <div key={item.userId} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
-                <div>
-                  <p className="font-medium text-white">{item.name}</p>
-                  <p className="text-slate-400">{item.email}</p>
-                </div>
-                <p className="font-semibold text-emerald-300">₹{item.totalExpense.toLocaleString('en-IN')}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl">
-        <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
-        <div className="mt-4 grid gap-3">
-          {analytics.recentActivity.length === 0 ? (
-            <p className="text-sm text-slate-400">No recent records available.</p>
-          ) : analytics.recentActivity.map((item) => (
-            <div key={item._id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
-              <div>
-                <p className="font-medium text-white">{item.description ?? item.note ?? item.category}</p>
-                <p className="text-slate-400">{item.category} · {item.type}</p>
-                {(item.userName || item.userEmail) && (
-                  <p className="text-xs text-cyan-200/90">{item.userName ?? 'Unknown user'}{item.userEmail ? ` (${item.userEmail})` : ''}</p>
-                )}
-              </div>
-              <p className={`font-semibold ${item.type === 'income' ? 'text-emerald-300' : 'text-rose-300'}`}>
-                {item.type === 'income' ? '+' : '-'}₹{item.amount.toLocaleString('en-IN')}
-              </p>
-            </div>
-          ))}
+      ) : (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <CategoryBreakdown data={analytics.byCategory} />
+          <MonthlyTrends data={analytics.monthlyTrends} />
         </div>
-      </section>
+      )}
+
+      {!isViewer && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl">
+            <h3 className="text-lg font-semibold text-white">Highest spending users</h3>
+            <div className="mt-4 grid gap-3">
+              {analytics.topSpenders.length === 0 ? (
+                <p className="text-sm text-slate-400">No spending data available.</p>
+              ) : analytics.topSpenders.map((item) => (
+                <div key={item.userId} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
+                  <div>
+                    <p className="font-medium text-white">{item.name}</p>
+                    <p className="text-slate-400">{item.email}</p>
+                  </div>
+                  <p className="font-semibold text-rose-300">₹{item.totalExpense.toLocaleString('en-IN')}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl">
+            <h3 className="text-lg font-semibold text-white">Lowest spending users</h3>
+            <div className="mt-4 grid gap-3">
+              {analytics.lowestSpenders.length === 0 ? (
+                <p className="text-sm text-slate-400">No spending data available.</p>
+              ) : analytics.lowestSpenders.map((item) => (
+                <div key={item.userId} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
+                  <div>
+                    <p className="font-medium text-white">{item.name}</p>
+                    <p className="text-slate-400">{item.email}</p>
+                  </div>
+                  <p className="font-semibold text-emerald-300">₹{item.totalExpense.toLocaleString('en-IN')}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {!isViewer && (
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl">
+          <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
+          <div className="mt-4 grid gap-3">
+            {analytics.recentActivity.length === 0 ? (
+              <p className="text-sm text-slate-400">No recent records available.</p>
+            ) : analytics.recentActivity.map((item) => (
+              <div key={item._id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-200">
+                <div>
+                  <p className="font-medium text-white">{item.description ?? item.note ?? item.category}</p>
+                  <p className="text-slate-400">{item.category} · {item.type}</p>
+                  {(item.userName || item.userEmail) && (
+                    <p className="text-xs text-cyan-200/90">{item.userName ?? 'Unknown user'}{item.userEmail ? ` (${item.userEmail})` : ''}</p>
+                  )}
+                </div>
+                <p className={`font-semibold ${item.type === 'income' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {item.type === 'income' ? '+' : '-'}₹{item.amount.toLocaleString('en-IN')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {isViewer && (
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl text-slate-300">

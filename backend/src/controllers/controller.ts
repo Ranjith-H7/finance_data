@@ -5,9 +5,10 @@ import User from '../models/users.js';
 import FinanceRecord from '../models/financeRecord.js';
 import AnalystPermission from '../models/analystPermission.js';
 import type { AuthRequest } from '../middleware/authMiddleware.js';
+import { logAuditEvent } from '../utils/auditLogger.js';
 
 // CREATE USER (POST)
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: AuthRequest, res: Response) => {
   try {
     const { name, email, password, role, status } = req.body;
     const normalizedName = String(name ?? '').trim();
@@ -45,6 +46,15 @@ export const createUser = async (req: Request, res: Response) => {
       password: hashedPassword,
       role: normalizedRole,
       status: normalizedStatus,
+    });
+
+    const actorId = req.user && typeof req.user === 'object' && 'id' in req.user ? String((req.user as { id: string }).id) : String(user._id);
+    await logAuditEvent({
+      actorId,
+      action: 'user.create',
+      targetType: 'user',
+      targetId: String(user._id),
+      details: { email: normalizedEmail, role: normalizedRole, status: normalizedStatus },
     });
 
     const { password: _password, ...userResponse } = user.toObject();
@@ -101,7 +111,7 @@ export const searchUsers = async (req: Request, res: Response) => {
   }
 };
 
-export const updateUserAccess = async (req: Request, res: Response) => {
+export const updateUserAccess = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { role, status } = req.body;
@@ -131,6 +141,16 @@ export const updateUserAccess = async (req: Request, res: Response) => {
 
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (req.user && typeof req.user === 'object' && 'id' in req.user) {
+      await logAuditEvent({
+        actorId: String((req.user as { id: string }).id),
+        action: 'user.update_access',
+        targetType: 'user',
+        targetId: String(updatedUser._id),
+        details: updatePayload,
+      });
     }
 
     res.status(200).json(updatedUser);
@@ -167,6 +187,14 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       AnalystPermission.deleteMany({ $or: [{ analystId: userObjectId }, { userId: userObjectId }, { reviewedBy: userObjectId }] }),
       User.findByIdAndDelete(userObjectId),
     ]);
+
+    await logAuditEvent({
+      actorId: req.user.id,
+      action: 'user.delete',
+      targetType: 'user',
+      targetId: id,
+      details: { cascaded: ['FinanceRecord', 'AnalystPermission'] },
+    });
 
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
